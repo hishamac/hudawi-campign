@@ -181,7 +181,7 @@ const PosterCampaign = () => {
         <div className="overflow-hidden w-[20rem] sm:w-20rem rounded-3xl">
           <div className="container poster bg-white relative ">
             <img src="/poster.png" alt="" className="w-full" />
-            <div className="text-center flex items-center justify-center  w-full h-4 font-degular capitalize tracking-tight text-wrap leading-[0.90rem] text-black absolute top-[317px] sm:top-[238.2px] sm:left-[130.8px] font-[590] sm:w-[110px]">
+            <div className="text-center z-50 flex items-center justify-center  w-full h-4 font-degular capitalize tracking-tight text-wrap leading-[0.90rem] text-black absolute top-[317px] sm:top-[275.2px] font-[590]">
               <p
                 className={`text-center flex max-w-44 font-degular capitalize `}
               >
@@ -193,7 +193,7 @@ const PosterCampaign = () => {
                 src={croppedImage}
                 // src="/profile.jpg"
                 alt=""
-                className="rounded-3xl absolute md:top-[10.8rem] md:left-[98px] md:w-[5.5rem] top-[12.45rem] left-[111px] w-[6.3rem]"
+                className="rounded-3xl absolute sm:top-[10.8rem] sm:left-[98px] sm:w-[5.5rem] top-[12.45rem] left-[111px] w-[6.3rem]"
               />
             ) : (
               <></>
@@ -202,8 +202,10 @@ const PosterCampaign = () => {
             <img
               src="/poster.png"
               alt=""
-              className="w-full absolute z-50 top-0"
+              className="w-full absolute z-20 top-0"
             />
+
+
           </div>
         </div>
         <div className="flex flex-col w-[20rem] justify-start px-4 sm:pr-0 sm:pl-8 text-white">
