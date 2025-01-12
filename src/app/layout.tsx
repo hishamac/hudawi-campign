@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DHIU RUBY JUBILEE Poster Campaign",
-  description: "DHIU RUBY JUBILEE Poster Campaign",
+  title: "RUBY JUBILEE CONVOCATION CEREMONY Poster Campaign",
+  description: "RUBY JUBILEE CONVOCATION CEREMONY Poster Campaign",
 };
 
 export default function RootLayout({
