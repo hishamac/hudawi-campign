@@ -161,8 +161,10 @@ const PosterCampaign = () => {
   };
 
   return (
-    <div className="flex items-center justify-center">
-      <div className="flex items-center justify-center flex-col sm:flex-row my-3 mx-2 space-y-8 sm:space-y-0 p-10 bg-[#ef6339] rounded-3xl w-96 sm:w-[40rem] ">
+    <>  
+    <div className="flex items-center justify-center w-full h-full  bg-[#e11962] bg-opacity-10">
+      <div className="flex items-center justify-center flex-col sm:flex-row my-3 mx-2 space-y-8 sm:space-y-0 p-10 bg-[#e11962] rounded-3xl w-96 sm:w-[40rem] ">
+
         <div className="overflow-hidden w-[20rem] sm:w-[20rem] rounded-3xl">
           <div id="poster-container" className="container poster bg-white relative ">
             <img src="/poster.png" alt="" className="w-full" />
@@ -346,7 +348,23 @@ const PosterCampaign = () => {
           )}
         </div>
       </div>
+
+     
     </div>
+     {/* Festie Promotional Footer */}
+      <div className="mt-6 mb-4 text-center">
+        <a
+          href="https://www.festie.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-full transition-all duration-300 group"
+        >
+          <span className="text-[#d41e1e] text-xs opacity-80 group-hover:opacity-100">Built with</span>
+          <img src="/festie-logo.png" alt="Festie" className="h-5 w-auto" />
+          <span className="text-[#d41e1e] text-xs opacity-80 group-hover:opacity-100">• Make your fest alive</span>
+        </a>
+      </div>
+    </>
   );
 };
 
