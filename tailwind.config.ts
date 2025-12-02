@@ -14,6 +14,8 @@ export default {
       },
       fontFamily: {
         degular: ['"Degular"', 'sans-serif'], // Add Degular to the font family
+        garamond: ['var(--font-eb-garamond)', 'serif'],
+        jakarta: ['var(--font-plus-jakarta)', 'sans-serif'],
       },
     },
   },

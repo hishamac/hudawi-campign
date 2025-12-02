@@ -1,13 +1,28 @@
 "use client";
 import React, { useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
-import html2canvas from "html2canvas";
-import localFont from "next/font/local";
+import { toPng } from "html-to-image";
 import Modal from "./Model";
 import { CroppedArea } from "@/libs/types";
 
+interface Registration {
+  programCode: string;
+  name: string;
+}
+
+interface Candidate {
+  chestNo: string;
+  name: string;
+  section: string;
+  team: string;
+  registrations: Registration[];
+}
+
 const PosterCampaign = () => {
   const [inputValue, setInputValue] = useState("");
+  const [chestNo, setChestNo] = useState("");
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -16,15 +31,48 @@ const PosterCampaign = () => {
     useState<CroppedArea | null>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
+  const handleChestNoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setChestNo(event.target.value);
+    setError("");
   };
 
-  const GOOGLE_URL =
-    "https://script.google.com/macros/s/AKfycbxIl1pC0PHYw92HCW2F4dGxL0AL6W0U9xQeSgDGhHrBpzSe8S19YJ59FbJIkPyC7rTi/exec";
+  const handleCheck = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (!chestNo) {
+      setError("Please enter a Chest No");
+      return;
+    }
+
+    try {
+      const res = await fetch("/data.json");
+      if (!res.ok) throw new Error("Failed to fetch data");
+      const data: Candidate[] = await res.json();
+      const found = data.find(
+        (c) => c.chestNo.toLowerCase() === chestNo.toLowerCase()
+      );
+
+      if (found) {
+        setCandidate(found);
+        setInputValue(found.name);
+        setError("");
+      } else {
+        setCandidate(null);
+        setInputValue("");
+        setError("Candidate not found");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error loading data");
+    }
+  };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsModalOpen(true);
+    if (candidate) {
+      setIsModalOpen(true);
+    } else {
+      setError("Please find a candidate first");
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,33 +130,29 @@ const PosterCampaign = () => {
     };
   }, [selectedImage, croppedAreaPixels]);
 
-  const downloadPoster = () => {
-    const posterElement = document.querySelector(".poster") as HTMLElement;
+  const downloadPoster = async () => {
+    const posterElement = document.getElementById("poster-container");
     if (!posterElement) return;
 
-    html2canvas(posterElement, {
-      scale: 3,
-      useCORS: true,
-      allowTaint: false,
-      scrollX: -window.scrollX,
-      scrollY: -window.scrollY,
-    }).then((canvas) => {
-      canvas.toBlob((blob) => {
-        const link = document.createElement("a");
-        if (blob) {
-          link.href = URL.createObjectURL(blob);
-        }
-        link.download = "poster.png";
-        link.click();
-        URL.revokeObjectURL(link.href);
-      }, "image/png");
-    });
-
-    handleSubmitPoster();
+    try {
+      const dataUrl = await toPng(posterElement, {
+        pixelRatio: 3,
+      });
+      const link = document.createElement("a");
+      link.download = `${candidate?.name || "poster"}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Failed to download image", err);
+      alert("Failed to download image. Please try again.");
+    }
   };
 
   const clearPoster = () => {
     setInputValue("");
+    setChestNo("");
+    setCandidate(null);
+    setError("");
     setSelectedImage(null);
     setCroppedImage(null);
     setCrop({ x: 0, y: 0 });
@@ -116,132 +160,114 @@ const PosterCampaign = () => {
     setCroppedAreaPixels(null);
   };
 
-  const handleSubmitPoster = async () => {
-    // e.preventDefault();
-
-    // const scriptURL = GOOGLE_URL;  // Replace with the new URL from your script deployment
-
-    // try {
-    //   const response = await fetch(scriptURL, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({ name: 'Your Name' }),  // Replace 'name' with your actual data
-    //   });
-
-    //   if (!response.ok) {
-    //     throw new Error(`HTTP error! status: ${response.status}`);
-    //   }
-
-    //   const result = await response.json();
-    //   alert('Data saved successfully: ' + JSON.stringify(result));
-    // } catch (error) {
-    //   console.error('Error:', error);
-    //   alert('Failed to save data!');
-    // }
-
-    // save image to cloudinary
-    let imageData = "url";
-    const data = new FormData();
-    data.append("file", croppedImage as any);
-    data.append("upload_preset", "bunyan");
-    data.append("cloud_name", "dx4ccftyk");
-    await fetch("https://api.cloudinary.com/v1_1/dx4ccftyk/image/upload", {
-      method: "POST",
-      body: data,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Success:", data);
-        imageData = data.secure_url;
-        // alert('Data saved successfully: ' + JSON.stringify(data));
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        // alert('Failed to save data!');
-      });
-
-    console.log(imageData);
-
-    const scriptURL =
-      "https://script.google.com/macros/s/AKfycbxlOoKoJYBSwClmNvobvQNLJHkUMTCcBj2ewSO0LgwfzqO3XoKvN3noHi55Z_YgJ64u/exec";
-    const formData = new FormData();
-    formData.append("name", inputValue);
-    formData.append("email", imageData as any);
-    formData.append("subject", "Hudawi");
-    await fetch(scriptURL, { method: "POST", body: formData })
-      .then((response) => console.log("Data saved successfully"))
-      .catch((error) => console.error("Error!", error.message));
-  };
-
   return (
     <div className="flex items-center justify-center">
       <div className="flex items-center justify-center flex-col sm:flex-row my-3 mx-2 space-y-8 sm:space-y-0 p-10 bg-[#ef6339] rounded-3xl w-96 sm:w-[40rem] ">
-        <div className="overflow-hidden w-[20rem] sm:w-20rem rounded-3xl">
-          <div className="container poster bg-white relative ">
+        <div className="overflow-hidden w-[20rem] sm:w-[20rem] rounded-3xl">
+          <div id="poster-container" className="container poster bg-white relative ">
             <img src="/poster.png" alt="" className="w-full" />
-            <div className="text-center z-50 flex items-center justify-center  w-full h-4 font-degular capitalize tracking-tight text-wrap leading-[0.90rem] text-black absolute top-[317px] sm:top-[275.2px] font-[590]">
-              <p
-                className={`text-center flex max-w-44 font-degular capitalize `}
-              >
-                {inputValue}
-              </p>
-            </div>
+
+            {/* Section below "Category:" */}
+            {candidate && (
+              <div className="absolute top-[76px] sm:top-[66px] left-0 right-0 text-center z-30">
+                <p className="text-[#FAE5BC] font-degular italic font-semibold uppercase text-[8px] sm:text-[10.6px]">
+                  {candidate.section}
+                </p>
+              </div>
+            )}
+
+            {/* Candidate Image */}
             {croppedImage ? (
               <img
                 src={croppedImage}
-                // src="/profile.jpg"
                 alt=""
-                className="rounded-3xl absolute sm:top-[10.8rem] sm:left-[98px] sm:w-[5.5rem] top-[12.45rem] left-[111px] w-[6.3rem]"
+                className="rounded-[40%] absolute sm:top-[5.3rem] sm:left-[103px] sm:w-[4.5rem] top-[6rem] left-[120px] w-[5rem]"
+              // style={{
+              //   zIndex: 100,
+              // }}
               />
             ) : (
               <></>
             )}
 
+            {/* Name, Team, and Programs below image */}
+            {candidate && (
+              <div className="absolute top-[193px] sm:top-[165.2px] left-0 right-0 flex flex-col items-center z-30">
+                {/* Name (EB Garamond Semi-bold Italic 15.25px) */}
+                <p className="text-white font-garamond font-semibold italic capitalize text-[12px] sm:text-[15.25px]">
+                  {candidate.name.toLowerCase()}
+                </p>
+
+                {/* Team (Plus Jakarta Sans Regular 7px) */}
+                <p className="text-[#FAE5BC] font-jakarta font-normal uppercase mt-0.5 text-[5.5px] sm:text-[7px]">
+                  {candidate.team}
+                </p>
+
+                {/* Programs list (Plus Jakarta Sans Medium 9.6px) */}
+                <div className="flex flex-col items-center mt-1 space-y-0.5">
+                  {candidate.registrations.map((reg) => (
+                    <p key={reg.programCode} className="text-white font-jakarta font-medium capitalize leading-3 text-[7.5px] sm:text-[9.6px]">
+                      {reg.name}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <img
               src="/poster.png"
               alt=""
-              className="w-full absolute z-20 top-0"
+              className="w-full absolute z-20 top-0 pointer-events-none"
             />
-
-
           </div>
         </div>
         <div className="flex flex-col w-[20rem] justify-start px-4 sm:pr-0 sm:pl-8 text-white">
           <h1 className={`text-2xl text-center leading-7`}>
             Participate in <br />{" "}
             <span className="font-semibold">
-              RUBY JUBILEE CONVOCATION CEREMONY
+              SHEFEST MAHDIYYA
             </span>{" "}
             Poster Campaign
           </h1>
           <form onSubmit={handleSubmit} className="flex flex-col mt-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              placeholder="Enter Your Name"
-              className="py-3 text-black px-4 mb-2 border-2 rounded-full my-2"
-            />
-            <button
-              type="submit"
-              className="bg-red border-2 border-white flex items-center justify-center rounded-full py-3 text-center px-4 gap-2 text-white"
-            >
-              {" "}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="fill-white h-4 w-4"
-                id="Layer_1"
-                data-name="Layer 1"
-                viewBox="0 0 24 24"
-                width="512"
-                height="512"
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={chestNo}
+                onChange={handleChestNoChange}
+                placeholder="Enter Chest No"
+                className="py-3 text-black px-4 border-2 rounded-full w-full"
+              />
+              <button
+                onClick={handleCheck}
+                className="bg-white text-[#ef6339] font-bold rounded-full px-4 border-2 border-white hover:bg-gray-100"
               >
-                <path d="M8.5,5c.83,0,1.5,.67,1.5,1.5s-.67,1.5-1.5,1.5-1.5-.67-1.5-1.5,.67-1.5,1.5-1.5Zm7.32,3.18l-.35-1.42c-.11-.44-.51-.76-.97-.76s-.86,.31-.97,.76l-.35,1.41-1.4,.32c-.45,.1-.77,.5-.77,.96,0,.46,.3,.86,.74,.98l1.43,.39,.36,1.43c.11,.44,.51,.76,.97,.76s.86-.31,.97-.76l.35-1.42,1.42-.35c.44-.11,.76-.51,.76-.97s-.31-.86-.76-.97l-1.42-.35Zm.79-3.3l1.76,.74,.7,1.75c.15,.38,.52,.63,.93,.63s.78-.25,.93-.63l.7-1.74,1.74-.7c.38-.15,.63-.52,.63-.93s-.25-.78-.63-.93l-1.74-.7-.7-1.74c-.15-.38-.52-.63-.93-.63s-.78,.25-.93,.63l-.69,1.73-1.73,.66c-.38,.14-.64,.51-.65,.92,0,.41,.23,.78,.61,.94Zm7.39,4.12v10c0,2.76-2.24,5-5,5H5c-2.76,0-5-2.24-5-5V5C0,2.24,2.24,0,5,0H15c.55,0,1,.45,1,1s-.45,1-1,1H5c-1.65,0-3,1.35-3,3v6.59l.56-.56c1.34-1.34,3.53-1.34,4.88,0l5.58,5.58c.54,.54,1.43,.54,1.97,0l.58-.58c1.34-1.34,3.53-1.34,4.88,0l1.56,1.56V9c0-.55,.45-1,1-1s1,.45,1,1Zm-2.24,11.17l-2.74-2.74c-.56-.56-1.48-.56-2.05,0l-.58,.58c-1.32,1.32-3.48,1.32-4.8,0l-5.58-5.58c-.56-.56-1.48-.56-2.05,0l-1.98,1.98v4.59c0,1.65,1.35,3,3,3h14c1.24,0,2.3-.75,2.76-1.83Z" />
-              </svg>{" "}
-              Create with your photo{" "}
-            </button>
+                Check
+              </button>
+            </div>
+            {error && <p className="text-white bg-red-500 px-2 py-1 rounded mb-2 text-sm text-center">{error}</p>}
+
+            {candidate && (
+              <button
+                type="submit"
+                className="bg-red border-2 border-white flex items-center justify-center rounded-full py-3 text-center px-4 gap-2 text-white"
+              >
+                {" "}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="fill-white h-4 w-4"
+                  id="Layer_1"
+                  data-name="Layer 1"
+                  viewBox="0 0 24 24"
+                  width="512"
+                  height="512"
+                >
+                  <path d="M8.5,5c.83,0,1.5,.67,1.5,1.5s-.67,1.5-1.5,1.5-1.5-.67-1.5-1.5,.67-1.5,1.5-1.5Zm7.32,3.18l-.35-1.42c-.11-.44-.51-.76-.97-.76s-.86,.31-.97,.76l-.35,1.41-1.4,.32c-.45,.1-.77,.5-.77,.96,0,.46,.3,.86,.74,.98l1.43,.39,.36,1.43c.11,.44,.51,.76,.97,.76s.86-.31,.97-.76l.35-1.42,1.42-.35c.44-.11,.76-.51,.76-.97s-.31-.86-.76-.97l-1.42-.35Zm.79-3.3l1.76,.74,.7,1.75c.15,.38,.52,.63,.93,.63s.78-.25,.93-.63l.7-1.74,1.74-.7c.38-.15,.63-.52,.63-.93s-.25-.78-.63-.93l-1.74-.7-.7-1.74c-.15-.38-.52-.63-.93-.63s-.78,.25-.93,.63l-.69,1.73-1.73,.66c-.38,.14-.64,.51-.65,.92,0,.41,.23,.78,.61,.94Zm7.39,4.12v10c0,2.76-2.24,5-5,5H5c-2.76,0-5-2.24-5-5V5C0,2.24,2.24,0,5,0H15c.55,0,1,.45,1,1s-.45,1-1,1H5c-1.65,0-3,1.35-3,3v6.59l.56-.56c1.34-1.34,3.53-1.34,4.88,0l5.58,5.58c.54,.54,1.43,.54,1.97,0l.58-.58c1.34-1.34,3.53-1.34,4.88,0l1.56,1.56V9c0-.55,.45-1,1-1s1,.45,1,1Zm-2.24,11.17l-2.74-2.74c-.56-.56-1.48-.56-2.05,0l-.58,.58c-1.32,1.32-3.48,1.32-4.8,0l-5.58-5.58c-.56-.56-1.48-.56-2.05,0l-1.98,1.98v4.59c0,1.65,1.35,3,3,3h14c1.24,0,2.3-.75,2.76-1.83Z" />
+                </svg>{" "}
+                Create with your photo{" "}
+              </button>
+            )}
+
             <Modal
               isOpen={isModalOpen}
               setIsOpen={setIsModalOpen}
